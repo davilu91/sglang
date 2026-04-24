@@ -965,6 +965,17 @@ class Fp8MoEMethod(FusedMoEMethodBase):
                     layer.w13_weight_scale_inv.format_ue8m0 = True
                     layer.w2_weight_scale_inv.format_ue8m0 = True
 
+                # === H20 FP4->FP8 software dequant fallback ===
+                if not will_use_deepgemm and not get_moe_runner_backend().is_flashinfer_mxfp4():
+                    from sglang.srt.layers.quantization.patch_fp4_to_fp8 import convert_fp4_layer_to_fp8
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.info("FP4->FP8 software dequant for non-Blackwell GPU")
+                    convert_fp4_layer_to_fp8(layer)
+                    self.is_fp4_expert = False
+                    return
+                # === End H20 fallback ===
+
             if (
                 not self.is_fp4_expert
                 and should_deepgemm_weight_requant_ue8m0(
